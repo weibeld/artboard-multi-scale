@@ -10,6 +10,7 @@
   "commands": [
     {
       "name": "Artboard Multi-Scale",
+      "shortcut": "cmd shift s",
       "identifier": "main",
       "script": "main.js",
       "handler": "main"
