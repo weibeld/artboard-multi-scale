@@ -1,0 +1,22 @@
+{
+  "name": "Artboard Multi-Scale",
+  "description": "Scale an Artboard to multiple dimensions with a single command",
+  "author": "Daniel Weibel",
+  "authorEmail": "daniel@weibeld.net",
+  "homepage": "https://github.com/weibeld/artboard-multi-scale",
+  "version": "0.0.1",
+  "identifier": "net.weibeld.sketch.plugin.artboard-multi-scale",
+  "compatibleVersion": "52.1",
+  "commands": [
+    {
+      "name": "Artboard Multi-Scale",
+      "identifier": "main",
+      "script": "main.js",
+      "handler": "main"
+    }
+  ],
+  "menu": {
+    "isRoot": true,
+    "items": ["main"]
+  }
+}
