@@ -5,7 +5,7 @@ function main(context) {
   // Make sure that exactly one Artboard is selected
   const selection = sketch.getSelectedDocument().selectedPage.selectedLayers;
   if (selection.length != 1 || selection.layers[0].type !== sketch.Types.Artboard) {
-    sketch.UI.alert("Error", "Please select an Artboard for starting.");
+    sketch.UI.alert("Invalid selection", "Please select an Artboard for starting.");
     throw new Error("Invalid selection")
   }
   baseArtboard = selection.layers[0];
@@ -14,9 +14,9 @@ function main(context) {
 
 function getInput() {
   sketch.UI.getInputFromUser(
-    "Dimensions",
+    "Target dimensions",
     {
-      description: 'Please enter the target dimensions separated by spaces. Valid formats are "N", "wN", "hN", and "N%", where "N" is an integer.'
+      description: 'Please enter a space-separated list of target dimensions.\n\nValid dimension formats are "N", "wN", "hN", "N%", where N is an integer.\n\nExample input: "100 80 50% 25% h20"'
     },
     parseInput
   )
@@ -38,7 +38,7 @@ function parseInput(err, value) {
       else if (d.match(/^[0-9]+%$/))
         s = parseInt(d)/100;
       else {
-        sketch.UI.alert("Error", `The following dimension is invalid: ${d}`);
+        sketch.UI.alert("Invalid input", `The following dimension specifier is invalid: ${d}`);
         throw new Error("Invalid input");
       }
       // Retain dimension string for naming the new Artboards
