@@ -10,7 +10,7 @@ This plugin creates scaled copies of an Artboard in multiple dimensions. It also
 
 ![Screencast](assets/demo.gif)
 
-The desired dimensions can be specified in terms of width, height, and percentage (see [_Dimension specifications_](#dimension-specifications) below).
+The desired dimensions can be specified in terms of width, height, and percentage (see [_Dimensions_](#dimensions) below).
 
 ## Usage
 
@@ -18,9 +18,9 @@ The plugin is used as follows:
 
 1. Select an Artboard.
 1. Launch the plugin by selecting **Plugins > Artboard Multi-Scale** or pressing the **⌘⇧S** keyboard shortcut.
-1. Enter the desired target dimensions (see [below](#dimension-specifications)) and hit **OK**.
+1. Enter the desired target dimensions (see [below](#dimensions)) and hit **OK**.
 
-## Dimension specifications
+## Dimensions
 
 The target dimensions are specified as a space-separated list of dimension specifiers. A dimension specifier specifies the desired width, height, or percentage that the Artboard should be scaled to.
 
@@ -57,3 +57,44 @@ The effect of each dimension specifier is as follows:
 - **`w100`**: scales the Artboard to a **width of 100** and an automatically calculated **height of 200** (alias for **`100`**).
 - **`h100`**: scales the Artboard to a **height of 100** and an automatically calculated **width of 50**.
 - **`50%`**: scales the Artboard to a an automatically calculated **width of 75** and **height of 150**.
+
+## Development
+
+To work on the plugin, the easiest way is to follow the below steps:
+
+> Before proceeding, make sure to [uninstall the plugin](https://developer.sketch.com/plugins/#uninstalling-plugins), in case it's currently installed.
+
+1. Clone the repository and `cd` into it:
+
+    ```bash
+    git clone https://github.com/weibeld/artboard-multi-scale
+    cd artboard-multi-scale
+    ```
+
+2. Create a symlink from the [Sketch plugins directory](https://developer.sketch.com/plugins/#plugin-location) to the `.sketchplugin` bundle in the repository:
+
+    ```bash
+    ln -s \
+      "$PWD"/artboard-multi-scale.sketchplugin \
+      ~/Library/Application\ Support/com.bohemiancoding.sketch3/Plugins/artboard-multi-scale.sketchplugin
+    ``` 
+
+    > The above installs the plugin without moving the `.sketchplugin` bundle into the Sketch plugins directory. In this way, the plugin can be edited directly from within the repository directory.
+
+3. Enable [plugin script reloading](https://developer.sketch.com/plugins/debugging#reload-scripts) in Sketch:
+
+    ```bash
+    defaults write com.bohemiancoding.sketch3 AlwaysReloadScript -bool YES
+    ```
+
+    > The above causes Sketch to always reload a plugin before executing it so that changes are reflected immediately. If this setting is disabled (which is the default), then Sketch must be restarted in order for changes to take effect.
+
+4. Edit the plugin files in the `.sketchplugin` bundle, and test the changes by running the plugin in Sketch.
+
+5. When done with editing, uninstall the plugin by deleting the previously created symlink:
+
+    ```bash
+    rm ~/Library/Application\ Support/com.bohemiancoding.sketch3/Plugins/artboard-multi-scale.sketchplugin
+    ```
+
+    > Do not uninstall the plugin through the Sketch UI (_Plugins > Manage Plugins..._) because this would delete the `.sketchplugin` bundle in the repository directory.
