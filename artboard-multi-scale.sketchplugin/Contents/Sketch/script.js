@@ -1,4 +1,6 @@
 const sketch = require("sketch");
+
+// Artboard selected by the user
 let baseArtboard;
 
 function main(context) {
@@ -12,6 +14,7 @@ function main(context) {
   getInput()
 }
 
+// Prompt the dimension specification input from the user
 function getInput() {
   sketch.UI.getInputFromUser(
     "Target dimensions",
@@ -22,79 +25,71 @@ function getInput() {
   )
 }
 
+// Parse the dimension specification input
 function parseInput(err, value) {
   if (!err) {
-    // Convert dimensions into percentage scales relative to selected Artboard
+    // Convert dimensions into scaling factors (between 0 and 1)
     const dimensions = value.split(/[ ]+/);
-    const scales = [];
+    const factors = [];
     dimensions.forEach(d => {
-      let s;
       if (d.match(/^[0-9]+$/))
-        s = parseInt(d)/baseArtboard.frame.width;
+        factors.push(parseInt(d)/baseArtboard.frame.width);
       else if (d.match(/^w[0-9]+$/))
-        s = parseInt(d.substr(1))/baseArtboard.frame.width;
+        factors.push(parseInt(d.substr(1))/baseArtboard.frame.width);
       else if (d.match(/^h[0-9]+$/))
-        s = parseInt(d.substr(1))/baseArtboard.frame.height;
+        factors.push(parseInt(d.substr(1))/baseArtboard.frame.height);
       else if (d.match(/^[0-9]+%$/))
-        s = parseInt(d)/100;
+        factors.push(parseInt(d)/100);
       else {
-        sketch.UI.alert("Invalid input", `The following dimension specifier is invalid: ${d}`);
+        sketch.UI.alert("Invalid input", `The following dimension is invalid: ${d}`);
         throw new Error("Invalid input");
       }
-      // Retain dimension string for naming the new Artboards
-      scales.push({scale: s, dimension: d});
     });
-    scale(scales);
+    scale(factors, dimensions);
   }
 }
 
-function scale(scales) {
+// Create scaled copies of the base Artboard. The 'factors' arg contains the
+// scaling factors (numbers between 0 and 1), and 'dimensions' contains the
+// corresponding dimension specifiers as supplied by the user.
+function scale(factors, dimensions) {
 
-  // Neighbour of the Artboard to create, used for positioning the new Artboard
-  let neighbourArtboard;
+  // Previously created Artboard, used for positioning the new Artboard
+  let previousArtboard;
 
-  for (let i = 0; i < scales.length; i++) {
-    let scale = scales[i].scale;
-    let dimension = scales[i].dimension;
-    if (i == 0) neighbourArtboard = baseArtboard;
+  for (let i = 0; i < factors.length; i++) {
+    if (i == 0) previousArtboard = baseArtboard;
 
-    // Determine size and position of new Artboard
-    let width = baseArtboard.frame.width * scale;
-    let height = baseArtboard.frame.height * scale;
-    let position = getNewArtboardPosition(neighbourArtboard, width, height);
-
-    // Create new Artboard (copy all attributes but delete layers)
+    // Create new scaled empty Artboard
     let newArtboard = baseArtboard.duplicate();
-    newArtboard.name = `${baseArtboard.name}_${dimension}`;
+    newArtboard.name = `${baseArtboard.name}_${dimensions[i]}`;
+    let width = baseArtboard.frame.width * factors[i];
+    let height = baseArtboard.frame.height * factors[i];
+    let position = calculateNewArtboardPosition(previousArtboard, width, height);
     newArtboard.frame = { x: position.x, y: position.y, width: width, height: height }
     newArtboard.layers = [];
 
-    // Copy and scale layers of base Artboard onto new Artboard
+    // Add scaled layers of base Artboard to new Artboard
     baseArtboard.layers.forEach(baseLayer => {
       let newLayer = baseLayer.duplicate()
       newLayer.frame = {
-        x: baseLayer.frame.x * scale,
-        y: baseLayer.frame.y * scale,
-        width: baseLayer.frame.width * scale,
-        height: baseLayer.frame.height * scale
+        x: baseLayer.frame.x * factors[i],
+        y: baseLayer.frame.y * factors[i],
+        width: baseLayer.frame.width * factors[i],
+        height: baseLayer.frame.height * factors[i] 
       }
       newLayer.parent = newArtboard;
     });
 
-    neighbourArtboard = newArtboard;
+    previousArtboard = newArtboard;
   }
 }
 
-// Calculate position of new Artboard based on the position and size of the
-// previous Artboard and the size of the new Artboard.
-function getNewArtboardPosition(neighbourArtboard, newArtboardWidth, newArtboardHeight) {
-  // New Artboard is positioned top-aligned to the right of the previous Artboard
-  // with a gap proportional to the size of the smaller one of the two Artboards.
-  let x =
-    neighbourArtboard.frame.x +
-    neighbourArtboard.frame.width +
-    Math.min(Math.min(neighbourArtboard.frame.width, neighbourArtboard.frame.height), Math.min(newArtboardWidth, newArtboardHeight)) * 0.4;
-  let y = neighbourArtboard.frame.y;
+// Calculate the position of the new Artboard
+function calculateNewArtboardPosition(previousArtboard, newArtboardWidth, newArtboardHeight) {
+  // Horizontal gap between new Artboard and neighbour Artboard
+  let xGap = Math.min(Math.min(previousArtboard.frame.width, previousArtboard.frame.height), Math.min(newArtboardWidth, newArtboardHeight)) * 0.4;
+  let x = previousArtboard.frame.x + previousArtboard.frame.width + xGap;
+  let y = previousArtboard.frame.y;
   return {x: x, y: y};
 }
-
