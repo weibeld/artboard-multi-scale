@@ -3,6 +3,9 @@ const sketch = require("sketch");
 // Artboard selected by the user
 let baseArtboard;
 
+// Frame of the last processed Artboard (used for positioning new Artboards)
+let lastArtboardFrame;
+
 function main(context) {
   // Make sure that exactly one Artboard is selected
   const selection = sketch.getSelectedDocument().selectedPage.selectedLayers;
@@ -14,7 +17,7 @@ function main(context) {
   getInput()
 }
 
-// Prompt the target dimension input from the user
+// Prompt the target dimensions from the user
 function getInput() {
   sketch.UI.getInputFromUser(
     "Target dimensions",
@@ -25,7 +28,7 @@ function getInput() {
   )
 }
 
-// Parse the target dimension input
+// Parse the target dimensions provided by the user
 function parseInput(err, value) {
   if (!err) {
     // Convert dimensions into scaling factors (numbers between 0 and 1)
@@ -49,36 +52,29 @@ function parseInput(err, value) {
   }
 }
 
-// Scale the base Artboard to all the specified dimensions. Scaling factors
-// are passed in 'factors' and user-provided dimension strings in 'dimensions'.
+// Scale the base Artboard to the specified dimensions
 function scale(factors, dimensions) {
-
-  // Previously created Artboard, used for positioning the new Artboard
-  let previousArtboard;
-
   for (let i = 0; i < factors.length; i++) {
-    if (i == 0) previousArtboard = baseArtboard;
-
-    // Create new scaled empty Artboard
+    // Create new scaled and empty Artboard
     let newArtboard = baseArtboard.duplicate();
     newArtboard.name = `${baseArtboard.name}_${dimensions[i]}`;
-    let width = baseArtboard.frame.width * factors[i];
-    let height = baseArtboard.frame.height * factors[i];
-    let position = calculateNewArtboardPosition(previousArtboard, width, height);
-    newArtboard.frame = { x: position.x, y: position.y, width: width, height: height }
+    newArtboard.frame = getNewArtboardFrame(factors[i]);
     newArtboard.layers = [];
+    // Scale and add layers of base Artboard to new Artboard
+    baseArtboard.layers.forEach(l => scaleAndAddLayer(l, factors[i], newArtboard));
+  }
+}
 
-    // Scale layers of base Artboard and add them to the new Artboard
-    baseArtboard.layers.forEach(baseLayer => {
-      let newLayer = baseLayer.duplicate();
-      scaleFrame(newLayer.frame, baseLayer.frame, factors[i]);
-      if ('style' in baseLayer) {
-        scaleStyle(newLayer.style, baseLayer.style, factors[i]);
-      }
-      newLayer.parent = newArtboard;
-    });
-
-    previousArtboard = newArtboard;
+// Create a scaled copy of a layer and add it to specified parent layer
+function scaleAndAddLayer(layer, factor, parent) {
+  let newLayer = layer.duplicate();
+  scaleFrame(newLayer.frame, layer.frame, factor);
+  if ('style' in layer) scaleStyle(newLayer.style, layer.style, factor);
+  newLayer.parent = parent;
+  // If the layer is a group, scale each of its layers separately
+  if (layer.type == sketch.Types.Group) {
+    newLayer.layers = [];
+    layer.layers.forEach(l => scaleAndAddLayer(l, factor, newLayer));
   }
 }
 
@@ -128,11 +124,20 @@ function scaleShadow(newShadow, baseShadow, factor) {
     newShadow.spread = baseShadow.spread * factor;
 }
 
-// Calculate the position of the new Artboard
-function calculateNewArtboardPosition(previousArtboard, newArtboardWidth, newArtboardHeight) {
-  // Horizontal gap between new Artboard and neighbour Artboard
-  let xGap = Math.min(Math.min(previousArtboard.frame.width, previousArtboard.frame.height), Math.min(newArtboardWidth, newArtboardHeight)) * 0.4;
-  let x = previousArtboard.frame.x + previousArtboard.frame.width + xGap;
-  let y = previousArtboard.frame.y;
-  return {x: x, y: y};
+// Calculate the frame (size and position) of a new Artboard
+function getNewArtboardFrame(factor) {
+  if (lastArtboardFrame == null) lastArtboardFrame = baseArtboard.frame;
+  let width = baseArtboard.frame.width * factor;
+  let height = baseArtboard.frame.height * factor;
+  let frame = {
+    // Horizontal gap between Artboards based on size of smaller Artboard
+    x: lastArtboardFrame.x +
+       lastArtboardFrame.width +
+       Math.min(Math.min(lastArtboardFrame.width, lastArtboardFrame.height), Math.min(width, height)) * 0.4,
+    y: lastArtboardFrame.y,
+    width: width,
+    height: height
+  }
+  lastArtboardFrame = frame;
+  return frame;
 }
