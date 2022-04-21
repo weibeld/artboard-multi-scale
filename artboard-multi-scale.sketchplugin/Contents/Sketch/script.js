@@ -2,7 +2,6 @@ const sketch = require("sketch");
 
 // Artboard selected by the user
 let baseArtboard;
-
 // Frame of the last processed Artboard (used for positioning new Artboards)
 let lastArtboardFrame;
 
@@ -52,92 +51,75 @@ function parseInput(err, value) {
   }
 }
 
-// Scale the base Artboard to the specified dimensions
+// Create scaled copies of the base Artboard in the specified dimensions
 function scale(factors, dimensions) {
   for (let i = 0; i < factors.length; i++) {
-    // Create new scaled and empty Artboard
     let newArtboard = baseArtboard.duplicate();
     newArtboard.name = `${baseArtboard.name}_${dimensions[i]}`;
     newArtboard.frame = getNewArtboardFrame(factors[i]);
-    newArtboard.layers = [];
-    // Scale and add layers of base Artboard to new Artboard
-    baseArtboard.layers.forEach(l => scaleAndAddLayer(l, factors[i], newArtboard));
+    newArtboard.layers.forEach(l => scaleLayer(l, factors[i], false));
   }
 }
 
-// Create a scaled copy of a layer and add it to specified parent layer
-function scaleAndAddLayer(layer, factor, parent) {
-  let newLayer = layer.duplicate();
-  scaleFrame(newLayer.frame, layer.frame, factor);
-  if ('style' in layer) scaleStyle(newLayer.style, layer.style, factor);
-  newLayer.parent = parent;
-  // If the layer is a group, scale each of its layers separately
+// Scale a layer by scaling its frame and style. If the layer is a group [1],
+// the scaling of the style is done recursively for each layer of the group.
+// The 'isInGroup' arg specifies whether the layer is a descendant of a group.
+function scaleLayer(layer, factor, isInGroup) {
+  // If the layer is inside a group, don't scale the frame because this was
+  // already done when the frame of the top-level group was scaled.
+  if (!isInGroup) scaleFrame(layer.frame, factor);
+  if ('style' in layer) scaleStyle(layer.style, factor);
   if (layer.type == sketch.Types.Group) {
-    newLayer.layers = [];
-    layer.layers.forEach(l => scaleAndAddLayer(l, factor, newLayer));
-  }
+    layer.layers.forEach(l => scaleLayer(l, factor, true));
+  } 
 }
 
-// Scale new frame [1,2] based on base frame
+// Scale a frame [1] (rectangle [2] object)
 // [1] https://developer.sketch.com/reference/api/#layer
 // [2] https://developer.sketch.com/reference/api/#rectangle
-function scaleFrame(newFrame, baseFrame, factor) {
-  newFrame.x = baseFrame.x * factor;
-  newFrame.y = baseFrame.y * factor;
-  newFrame.width = baseFrame.width * factor;
-  newFrame.height = baseFrame.height * factor;
+function scaleFrame(frame, factor) {
+  frame.x *= factor;
+  frame.y *= factor;
+  frame.width *= factor;
+  frame.height *= factor;
 }
 
-// Scale scalable properties of new style [1] based on base style
+// Scale the scalable properties a style [1] object
 // [1] https://developer.sketch.com/reference/api/#style
-function scaleStyle(newStyle, baseStyle, factor) {
+function scaleStyle(style, factor) {
   // Borders
-  for (let i = 0; i < baseStyle.borders.length; i++) {
-    newStyle.borders[i].thickness = baseStyle.borders[i].thickness * factor;
-  }
+  style.borders.forEach(b => b.thickness *= factor);
   // Shadows
-  for (let i = 0; i < baseStyle.shadows.length; i++) {
-    scaleShadow(newStyle.shadows[i], baseStyle.shadows[i], factor);
-  }
-  for (let i = 0; i < baseStyle.innerShadows.length; i++) {
-    scaleShadow(newStyle.innerShadows[i], baseStyle.innerShadows[i], factor);
-  }
+  style.shadows.forEach(s => scaleShadow(s, factor));
+  style.innerShadows.forEach(s => scaleShadow(s, factor));
   // Blur
-  newStyle.blur.radius = baseStyle.blur.radius * factor;
+  style.blur.radius *= factor;
   // Text
-  newStyle.fontSize = baseStyle.fontSize * factor;
-  if (baseStyle.kerning != null) {
-    newStyle.kerning = baseStyle.kerning * factor;
-  }
-  if (baseStyle.lineHeight != null) {
-    newStyle.lineHeight = baseStyle.lineHeight * factor;
-  }
-  newStyle.paragraphSpacing = baseStyle.paragraphSpacing * factor;
+  style.fontSize *= factor;
+  if (style.kerning != null) style.kerning *= factor;
+  if (style.lineHeight != null) style.lineHeight *= factor;
+  style.paragraphSpacing *= factor;
 }
 
-// Scale new shadow [1] based on base shadow
+// Scale a shadow [1] object
 // [1] https://developer.sketch.com/reference/api/#shadow
-function scaleShadow(newShadow, baseShadow, factor) {
-    newShadow.x = baseShadow.x * factor;
-    newShadow.y = baseShadow.y * factor;
-    newShadow.blur = baseShadow.blur * factor;
-    newShadow.spread = baseShadow.spread * factor;
+function scaleShadow(shadow, factor) {
+    shadow.x *= factor;
+    shadow.y *= factor;
+    shadow.blur *= factor;
+    shadow.spread *= factor;
 }
 
-// Calculate the frame (size and position) of a new Artboard
+// Calculate the frame (position and size) of a new Artboard based on the base
+// Artboard, scaling factor, and frame of the last processed Artboard.
 function getNewArtboardFrame(factor) {
   if (lastArtboardFrame == null) lastArtboardFrame = baseArtboard.frame;
   let width = baseArtboard.frame.width * factor;
   let height = baseArtboard.frame.height * factor;
-  let frame = {
-    // Horizontal gap between Artboards based on size of smaller Artboard
-    x: lastArtboardFrame.x +
-       lastArtboardFrame.width +
-       Math.min(Math.min(lastArtboardFrame.width, lastArtboardFrame.height), Math.min(width, height)) * 0.4,
-    y: lastArtboardFrame.y,
-    width: width,
-    height: height
-  }
-  lastArtboardFrame = frame;
-  return frame;
+  // Horizontal gap between Artboards
+  let gapX = Math.min(Math.min(lastArtboardFrame.width, lastArtboardFrame.height), Math.min(width, height)) * 0.4;
+  let x = lastArtboardFrame.x + lastArtboardFrame.width + gapX;
+  let y = lastArtboardFrame.y;
+  lastArtboardFrame = { x: x, y: y, width: width, height: height };
+  return lastArtboardFrame;
 }
