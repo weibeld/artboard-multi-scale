@@ -14,7 +14,7 @@ function main(context) {
   getInput()
 }
 
-// Prompt the dimension specification input from the user
+// Prompt the target dimension input from the user
 function getInput() {
   sketch.UI.getInputFromUser(
     "Target dimensions",
@@ -25,10 +25,10 @@ function getInput() {
   )
 }
 
-// Parse the dimension specification input
+// Parse the target dimension input
 function parseInput(err, value) {
   if (!err) {
-    // Convert dimensions into scaling factors (between 0 and 1)
+    // Convert dimensions into scaling factors (numbers between 0 and 1)
     const dimensions = value.split(/[ ]+/);
     const factors = [];
     dimensions.forEach(d => {
@@ -49,9 +49,8 @@ function parseInput(err, value) {
   }
 }
 
-// Create scaled copies of the base Artboard. The 'factors' arg contains the
-// scaling factors (numbers between 0 and 1), and 'dimensions' contains the
-// corresponding dimension specifiers as supplied by the user.
+// Scale the base Artboard to all the specified dimensions. Scaling factors
+// are passed in 'factors' and user-provided dimension strings in 'dimensions'.
 function scale(factors, dimensions) {
 
   // Previously created Artboard, used for positioning the new Artboard
@@ -69,20 +68,64 @@ function scale(factors, dimensions) {
     newArtboard.frame = { x: position.x, y: position.y, width: width, height: height }
     newArtboard.layers = [];
 
-    // Add scaled layers of base Artboard to new Artboard
+    // Scale layers of base Artboard and add them to the new Artboard
     baseArtboard.layers.forEach(baseLayer => {
-      let newLayer = baseLayer.duplicate()
-      newLayer.frame = {
-        x: baseLayer.frame.x * factors[i],
-        y: baseLayer.frame.y * factors[i],
-        width: baseLayer.frame.width * factors[i],
-        height: baseLayer.frame.height * factors[i] 
+      let newLayer = baseLayer.duplicate();
+      scaleFrame(newLayer.frame, baseLayer.frame, factors[i]);
+      if ('style' in baseLayer) {
+        scaleStyle(newLayer.style, baseLayer.style, factors[i]);
       }
       newLayer.parent = newArtboard;
     });
 
     previousArtboard = newArtboard;
   }
+}
+
+// Scale new frame [1,2] based on base frame
+// [1] https://developer.sketch.com/reference/api/#layer
+// [2] https://developer.sketch.com/reference/api/#rectangle
+function scaleFrame(newFrame, baseFrame, factor) {
+  newFrame.x = baseFrame.x * factor;
+  newFrame.y = baseFrame.y * factor;
+  newFrame.width = baseFrame.width * factor;
+  newFrame.height = baseFrame.height * factor;
+}
+
+// Scale scalable properties of new style [1] based on base style
+// [1] https://developer.sketch.com/reference/api/#style
+function scaleStyle(newStyle, baseStyle, factor) {
+  // Borders
+  for (let i = 0; i < baseStyle.borders.length; i++) {
+    newStyle.borders[i].thickness = baseStyle.borders[i].thickness * factor;
+  }
+  // Shadows
+  for (let i = 0; i < baseStyle.shadows.length; i++) {
+    scaleShadow(newStyle.shadows[i], baseStyle.shadows[i], factor);
+  }
+  for (let i = 0; i < baseStyle.innerShadows.length; i++) {
+    scaleShadow(newStyle.innerShadows[i], baseStyle.innerShadows[i], factor);
+  }
+  // Blur
+  newStyle.blur.radius = baseStyle.blur.radius * factor;
+  // Text
+  newStyle.fontSize = baseStyle.fontSize * factor;
+  if (baseStyle.kerning != null) {
+    newStyle.kerning = baseStyle.kerning * factor;
+  }
+  if (baseStyle.lineHeight != null) {
+    newStyle.lineHeight = baseStyle.lineHeight * factor;
+  }
+  newStyle.paragraphSpacing = baseStyle.paragraphSpacing * factor;
+}
+
+// Scale new shadow [1] based on base shadow
+// [1] https://developer.sketch.com/reference/api/#shadow
+function scaleShadow(newShadow, baseShadow, factor) {
+    newShadow.x = baseShadow.x * factor;
+    newShadow.y = baseShadow.y * factor;
+    newShadow.blur = baseShadow.blur * factor;
+    newShadow.spread = baseShadow.spread * factor;
 }
 
 // Calculate the position of the new Artboard
