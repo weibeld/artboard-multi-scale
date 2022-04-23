@@ -8,6 +8,7 @@
   "identifier": "net.weibeld.sketch.plugin.artboard-multi-scale",
   "compatibleVersion": "52.1",
   "icon": "icon.png",
+  "appcast": "https://raw.githubusercontent.com/weibeld/artboard-multi-scale/main/.appcast.xml",
   "commands": [
     {
       "name": "Artboard Multi-Scale",
